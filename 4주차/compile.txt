@@ -1,0 +1,2 @@
+$ gcc -o wiringled wiringled.c -lwiringPi 
+$ ./wiringled 1          # wPi 번호 1 = GPIO18 
