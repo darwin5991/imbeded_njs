@@ -2,6 +2,6 @@
 *.docx
 *.tmp
 *.mp4
-4주차/정리.md
+*.md
 
 .gitignore
