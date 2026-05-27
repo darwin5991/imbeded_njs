@@ -16,10 +16,11 @@ ultrasonic = DistanceSensor(
 # SG90 서보모터
 # =============================
 servo = Servo(12)  # GPIO12, Pin32
-servo.min()        # 차단기 닫힘 상태
+servo.min()        # 차단기 닫힘
 
 # =============================
 # LED 12개 = 4행 x 3열 길
+# 입구 시작점: GPIO17(Pin11), 0행 1열
 # =============================
 LED_PINS = [
     [4, 17, 18],
@@ -46,6 +47,7 @@ light_sensors = [
 
 # =============================
 # 주차칸 정보
+# row는 LED 행 번호와 대응
 # =============================
 PARKING_SPOTS = [
     {"name": "L1", "row": 0, "side": "left"},
@@ -59,107 +61,74 @@ PARKING_SPOTS = [
     {"name": "R4", "row": 3, "side": "right"},
 ]
 
-# =============================
-# 설정값
-# =============================
-DETECT_DISTANCE = 50   # 50cm 이하 차량 감지
+DETECT_DISTANCE = 50
 detected = False
 lost_time = None
 
 
-# =============================
-# LED 전체 끄기
-# =============================
 def all_led_off():
     for row in leds:
         for led in row:
             led.off()
 
 
-# =============================
-# LED 길 안내
-# =============================
 def show_path(target_row, side):
     all_led_off()
 
-    center_col = 1
+    START_ROW = 0
+    START_COL = 1   # GPIO17(Pin11), 가운데 시작
 
-    # 입구가 아래쪽 가운데라고 가정
-    for r in range(3, target_row - 1, -1):
-        leds[r][center_col].on()
+    # Pin11 가운데에서 목표 행까지 세로로 켜기
+    for r in range(START_ROW, target_row + 1):
+        leds[r][START_COL].on()
 
-    # 왼쪽 주차칸 안내
+    # 목표 행에서 왼쪽/오른쪽 주차칸 방향 LED 켜기
     if side == "left":
         leds[target_row][0].on()
-
-    # 오른쪽 주차칸 안내
     elif side == "right":
         leds[target_row][2].on()
 
 
-# =============================
-# 빈 주차칸 찾기
-# =============================
 def find_empty_spot():
     for i, sensor in enumerate(light_sensors):
-
-        # value == 0 이면 빈자리
-        if sensor.value == 0:
+        if sensor.value == 0:   # 빈자리
             return PARKING_SPOTS[i]
-
-    # 전부 value == 1 이면 만차
-    return None
+    return None                 # 만차
 
 
-# =============================
-# 주차칸 상태 출력
-# =============================
 def print_parking_status():
     print("주차칸 상태")
-
     for i, sensor in enumerate(light_sensors):
         spot = PARKING_SPOTS[i]
-
         if sensor.value == 1:
             print(f"{spot['name']} : 차량 있음")
         else:
             print(f"{spot['name']} : 빈자리")
 
 
-# =============================
-# 메인 코드
-# =============================
 print("스마트 주차 차단기 시스템 시작")
-print("초음파 감지 → 조도센서 확인 → 서보모터 차단기 → LED 길 안내")
+print("입구 시작 LED: GPIO17(Pin11)")
 
 try:
     while True:
         distance = ultrasonic.distance * 100
-
         print(f"\n거리: {distance:.1f} cm")
 
-        # 차량 감지
         if distance <= DETECT_DISTANCE:
-
             if not detected:
                 print("차량 감지됨")
 
                 print_parking_status()
-
                 empty_spot = find_empty_spot()
 
-                # 만차
                 if empty_spot is None:
-                    print("만차 상태")
-                    print("차단기 열림 금지")
+                    print("만차 상태 → 차단기 열림 금지")
                     servo.min()
                     all_led_off()
 
-                # 빈자리 있음
                 else:
                     print(f"안내할 빈 주차칸: {empty_spot['name']}")
-                    print("차단기 열림")
-                    print("LED 길 안내 시작")
+                    print("차단기 열림 + LED 길 안내")
 
                     servo.max()
                     show_path(empty_spot["row"], empty_spot["side"])
@@ -168,18 +137,13 @@ try:
 
             lost_time = None
 
-        # 차량이 초음파 범위 밖으로 나간 경우
         else:
             if detected:
-
                 if lost_time is None:
                     lost_time = time()
 
                 elif time() - lost_time >= 5:
-                    print("차량 통과 후 5초 경과")
-                    print("차단기 닫힘")
-                    print("LED 꺼짐")
-
+                    print("차량 통과 후 5초 경과 → 차단기 닫힘")
                     servo.min()
                     all_led_off()
 
