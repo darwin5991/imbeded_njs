@@ -102,8 +102,7 @@ print("LED는 안내 주차칸 조도센서가 감지되면 꺼짐")
 try:
     while True:
         distance = ultrasonic.distance * 100
-        light_values = [sensor.value for sensor in light_sensors]
-        print(f"\n거리: {distance:.1f} cm| 조도센서: {light_values}")
+        print(f"\n거리: {distance:.1f} cm")
 
         # 1. 초음파로 차량 감지
         if distance <= DETECT_DISTANCE and not car_detected:
