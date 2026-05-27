@@ -4,18 +4,24 @@ from time import sleep, time
 
 Device.pin_factory = LGPIOFactory()
 
-# 초음파 센서
+# =============================
+# HC-SR04 초음파 센서
+# =============================
 ultrasonic = DistanceSensor(
     echo=26,       # GPIO26, Pin37
     trigger=16     # GPIO16, Pin36
 )
 
-# 서보모터
+# =============================
+# SG90 서보모터
+# =============================
 servo = Servo(12)  # GPIO12, Pin32
-servo.min()
+servo.min()        # 차단기 닫힘
 
+# =============================
 # LED 12개 = 4행 x 3열 길
-# 시작점: GPIO17(Pin11), 0행 1열
+# 시작점: GPIO17(Pin11), 가운데
+# =============================
 LED_PINS = [
     [4, 17, 18],
     [27, 22, 23],
@@ -25,9 +31,11 @@ LED_PINS = [
 
 leds = [[LED(pin) for pin in row] for row in LED_PINS]
 
+# =============================
 # 조도센서 8개
 # value == 1 : 차량 있음
 # value == 0 : 빈자리
+# =============================
 LIGHT_SENSOR_PINS = [
     14, 15, 20, 21,   # L1~L4
     10, 9, 11, 8      # R1~R4
@@ -35,6 +43,9 @@ LIGHT_SENSOR_PINS = [
 
 light_sensors = [DigitalInputDevice(pin) for pin in LIGHT_SENSOR_PINS]
 
+# =============================
+# 주차칸 정보
+# =============================
 PARKING_SPOTS = [
     {"name": "L1", "row": 0, "side": "left",  "sensor_index": 0},
     {"name": "L2", "row": 1, "side": "left",  "sensor_index": 1},
@@ -63,7 +74,7 @@ def all_led_off():
 def show_path(target_row, side):
     all_led_off()
 
-    start_col = 1   # GPIO17(Pin11), 가운데 시작
+    start_col = 1  # GPIO17(Pin11), 가운데 시작
 
     for r in range(0, target_row + 1):
         leds[r][start_col].on()
@@ -86,7 +97,7 @@ def find_empty_spot():
 
 print("스마트 주차 시스템 시작")
 print("초음파 감지 → 차단기 열림 → 5초 후 닫힘")
-print("LED는 안내한 주차칸 조도센서가 감지되면 꺼짐")
+print("LED는 안내 주차칸 조도센서가 감지되면 꺼짐")
 
 try:
     while True:
@@ -99,14 +110,14 @@ try:
 
             empty_spot = find_empty_spot()
 
-            # 2. 만차면 차단기 안 열림
+            # 2. 만차 상태
             if empty_spot is None:
                 print("만차 상태 → 차단기 열림 금지")
                 servo.min()
                 all_led_off()
                 guided_spot = None
 
-            # 3. 빈자리 있으면 차단기 열림 + LED 안내
+            # 3. 빈자리 안내
             else:
                 guided_spot = empty_spot
 
@@ -128,16 +139,25 @@ try:
                 servo.min()
                 gate_open_time = None
 
-        # 5. 안내한 주차칸에 차가 들어오면 LED 끄기
+        # 5. 안내한 주차칸에 차가 주차됐는지 조도센서로 확인
         if guided_spot is not None:
             idx = guided_spot["sensor_index"]
+            sensor_value = light_sensors[idx].value
 
-            if light_sensors[idx].value == 1:
-                print(f"{guided_spot['name']} 주차 감지됨 → LED 꺼짐")
+            print(
+                f"{guided_spot['name']} 주차 여부 확인 중... "
+                f"조도센서 값: {sensor_value}"
+            )
+
+            if sensor_value == 1:
+                print(f"{guided_spot['name']} 조도센서 감지됨")
+                print("차량이 안내된 주차칸에 주차 완료")
+                print("LED 길 안내 종료")
+
                 all_led_off()
                 guided_spot = None
 
-        # 6. 초음파에서 차량이 멀어지면 다음 차량 감지 가능
+        # 6. 초음파 범위 밖으로 나가면 다음 차량 감지 가능
         if distance > DETECT_DISTANCE:
             car_detected = False
 
