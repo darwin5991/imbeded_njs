@@ -1,0 +1,6 @@
+# 1. pigpio 관련 패키지가 설치되어 있는지 확인 및 설치
+sudo apt-get install python3-pigpio
+
+# 2. 하드웨어 타이밍 신호를 백그라운드에서 구동하는 백그라운드 서비스 시작
+sudo systemctl enable pigpiod
+sudo systemctl start pigpiod

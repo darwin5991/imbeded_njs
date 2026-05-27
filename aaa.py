@@ -1,8 +1,11 @@
+import time
 from gpiozero import Device, DistanceSensor, Servo, LED, DigitalInputDevice
-from gpiozero.pins.lgpio import LGPIOFactory
+# [수정] 하드웨어 PWM을 위한 pigpio 팩토리 임포트
+from gpiozero.pins.pigpio import PiGPIOFactory
 from time import sleep, time
 
-Device.pin_factory = LGPIOFactory()
+# [수정] 핀 팩토리를 PiGPIOFactory로 변경 (소프트웨어 덜덜거림 차단)
+Device.pin_factory = PiGPIOFactory()
 
 # =============================
 # HC-SR04 초음파 센서
@@ -15,7 +18,8 @@ ultrasonic = DistanceSensor(
 # =============================
 # SG90 서보모터
 # =============================
-servo = Servo(12)  # GPIO12, Pin32
+# [수정] SG90 서보모터의 표준 펄스 폭 한계값(0.5ms ~ 2.5ms)을 정확하게 지정
+servo = Servo(12, min_pulse_width=0.5/1000, max_pulse_width=2.5/1000)  # GPIO12, Pin32
 servo.min()        # 차단기 닫힘
 
 # =============================
@@ -139,7 +143,7 @@ try:
                 servo.min()
                 gate_open_time = None
 
-        # 5. 안내한 주차칸에 차가 주차됐는지 조도센서로 확인
+        # 5. 안내한 주차칸에 차가 주차됐인지 조도센서로 확인
         if guided_spot is not None:
             idx = guided_spot["sensor_index"]
             sensor_value = light_sensors[idx].value
